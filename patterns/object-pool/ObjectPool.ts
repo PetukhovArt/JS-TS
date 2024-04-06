@@ -30,28 +30,27 @@ class ObjectPool<T> {
     }
   }
 
-  private fillPool(size: number) {
+  private fillPool(size: number): void {
     for (let i = 0; i < size; i++) {
       const newInstance = this.creator();
       this.freePool.push(newInstance);
     }
   }
 
-  private get poolSize() {
+  private get poolSize(): number {
     return this.freePool.length;
   }
 
-  private cutPool(size: number) {
+  private cutPool(size: number): void {
     const startIndex = this.poolSize - size;
     this.freePool.splice(startIndex, size);
   }
 
   /**
-   * @description получение свободного экземпляра из пула для взаимодействия
-   *  дозаполнение пула, в случае меньше min свободных экземпляров в freePool
-   *  очситка пула, в случае больше max свободных экземпляров в freePool
-   *  установка таймаута на очистку экземпляра
-   *  возврат инстанса по индексу, если такой имеется в активных, если нет , то из свободных
+   * @description получение объекта из активного пула по индексу / свободного пула
+   *  дозаполнение freePool, в случае minSize свободных экземпляров
+   *  удаление лишних экземпляров freePool, в случае maxSize свободных экземпляров
+   *  установка таймаута на очистку экземпляра и возврат в freePool
    */
   public getInstance(index: number): T {
     if (!this.poolSize || this.poolSize < this.minSize) {
@@ -80,7 +79,7 @@ class ObjectPool<T> {
     }
   }
 
-  private setTimeoutToClear(index: number) {
+  private setTimeoutToClear(index: number): void {
     const currentTimeout = this.activeTimeouts.get(index);
 
     if (currentTimeout) {
@@ -105,7 +104,7 @@ class ObjectPool<T> {
 }
 
 export class TestInstance {
-  name = "artem " + Math.random().toFixed(2);
+  name = "random " + Math.random().toFixed(3);
   returnName = () => this.name;
 }
 
