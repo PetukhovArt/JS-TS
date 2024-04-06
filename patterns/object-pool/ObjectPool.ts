@@ -8,7 +8,7 @@ type TimeoutType = ReturnType<typeof setTimeout> | null;
  * @param maxSize максимальное количество свободных объектов в пуле, default = 20
  * @param timeToClear таймаут очистки неиспользуемого инстанса
  */
-class ObjectPool<T> {
+export class ObjectPool<T> {
   /**
    * @private freePool  - массив свободных экземпляров
    * @private activePool  - коллекция активных экземпляров
@@ -101,35 +101,16 @@ class ObjectPool<T> {
       this.freePool.push(activeInstance);
     }
   }
-}
 
-export class TestInstance {
-  name = "random " + Math.random().toFixed(3);
-  returnName = () => this.name;
-}
-
-//example usage
-class ParentClass {
-  pool: ObjectPool<TestInstance>;
-
-  constructor() {
-    //initialize pool
-    this.pool = new ObjectPool<TestInstance>(() => new TestInstance());
+  public getFreePool() {
+    return this.freePool;
   }
 
-  getData(channelId: number) {
-    //get instance by index
-    const instance = this.pool.getInstance(channelId - 1);
-    //use instance
-    return instance.returnName();
+  public getActivePool() {
+    return this.activePool;
+  }
+
+  public getActiveTimeouts() {
+    return this.activeTimeouts;
   }
 }
-
-const c = new ParentClass();
-console.log(c.getData(1)); // some data from 0 index instance
-console.log(c.getData(2)); // some data from 1 index instance
-
-// const pool = new ObjectPool<DummyClass>(() => new DummyClass());
-// console.log("instance", pool.getInstance(5));
-// console.log("freepool", pool.getFreePool);
-// console.log("activepool", pool.getActivePool);
