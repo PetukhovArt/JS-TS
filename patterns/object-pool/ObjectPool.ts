@@ -25,25 +25,37 @@ export class ObjectPool<T> {
     private maxSize = 20,
     private timeToClear = 10000,
   ) {
-    if (!this.freePool.length) {
-      this.fillPool(this.normalSize);
-    }
+    this.fillPool(this.normalSize);
   }
 
-  private fillPool(size: number): void {
-    for (let i = 0; i < size; i++) {
-      const newInstance = this.creator();
-      this.freePool.push(newInstance);
-    }
-  }
-
-  private get poolSize(): number {
+  private get freePoolSize(): number | undefined {
     return this.freePool.length;
   }
 
-  private cutPool(size: number): void {
-    const startIndex = this.poolSize - size;
-    this.freePool.splice(startIndex, size);
+  private fillPool(targetSize: number): void {
+    const fill = (value: number) => {
+      for (let i = 0; i < value; i++) {
+        const instance = this.creator();
+        this.freePool.push(instance);
+      }
+    };
+
+    if (!this.freePoolSize) {
+      fill(this.normalSize);
+      return;
+    }
+
+    if (this.freePoolSize) {
+      const countToFill = targetSize - this.freePoolSize;
+      fill(countToFill);
+    }
+  }
+
+  private cutPoolToNormal(): void {
+    const elementsToRemove = this.freePoolSize - this.normalSize;
+    if (elementsToRemove && elementsToRemove > 0) {
+      this.freePool.splice(-elementsToRemove, elementsToRemove);
+    }
   }
 
   /**
@@ -53,14 +65,6 @@ export class ObjectPool<T> {
    *  установка таймаута на очистку экземпляра и возврат в freePool
    */
   public getInstance(index: number): T {
-    if (!this.poolSize || this.poolSize < this.minSize) {
-      this.fillPool(this.normalSize);
-    }
-
-    if (this.poolSize >= this.maxSize) {
-      this.cutPool(this.normalSize);
-    }
-
     const activePool: T | undefined = this.activePool.get(index);
 
     if (activePool) {
@@ -75,7 +79,10 @@ export class ObjectPool<T> {
       this.setTimeoutToClear(index);
       return freePool;
     } else {
-      throw new Error("Непредвиденная ошибка");
+      const newInstance = this.creator();
+      this.activePool.set(index, newInstance);
+      this.setTimeoutToClear(index);
+      return newInstance;
     }
   }
 
@@ -95,10 +102,29 @@ export class ObjectPool<T> {
    */
   private dispose(index: number): void {
     this.activeTimeouts.delete(index);
-    const activeInstance = this.activePool.get(index);
-    if (activeInstance) {
+
+    if (this.freePoolSize >= this.normalSize) {
       this.activePool.delete(index);
-      this.freePool.push(activeInstance);
+      this.cutPoolToNormal();
+      return;
+    }
+
+    const active = this.activePool.get(index);
+    if (active) {
+      this.activePool.delete(index);
+      this.freePool.push(active);
+      this.normalizeFreePool();
+      return;
+    }
+  }
+
+  private normalizeFreePool() {
+    if (this.freePoolSize > this.maxSize) {
+      this.cutPoolToNormal();
+      return;
+    }
+    if (this.freePoolSize < this.minSize) {
+      this.fillPool(this.normalSize);
     }
   }
 
